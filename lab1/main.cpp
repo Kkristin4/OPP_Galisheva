@@ -3,10 +3,10 @@
 #include <mpi/mpi.h>
 using namespace std;
 
-int iflast(int size, int rank){
+bool iflast(int size, int rank){
     if (size == rank + 1)
-        return 1;
-    return 0;
+        return true;
+    return false;
 }
 
 void multiplication_vector(double* matrix, double* vector, double* result, int N, int rank, int NumLines, int NormalLines, int * CountELEM, int * shift){
@@ -23,7 +23,7 @@ void multiplication_vector(double* matrix, double* vector, double* result, int N
 }
 
 void multiplication_tay(double* vector, int N, int rank, int NormalLines){
-    double tay = 5e-5;
+    static double tay = 5e-5;
     for(int i = 0; i < N; i++){
         vector[i] *= tay;
     }
@@ -44,13 +44,9 @@ double vector_length(double* vector, int N){
 }
 
 bool check(double* result, int N, double* B, int rank){
-    double  e = 1e-5;
+    static double  e = 1e-5;
     double f = vector_length(result, N) / vector_length(B, N);
-    if ( f < e * e){
-        return true;}
-    else {
-        return false;
-    }
+    return f < e * e;
 }
 
 
@@ -83,7 +79,7 @@ int main(int argc, char *argv[]) {
     if (iflast(size, rank))
         NumLines = (N - rank * NumLines);
 
-    double* A= (double*)malloc(N * NumLines * sizeof(double*));
+    double* A = new double[N * NumLines];
     for(int i = 0; i < N * NumLines; i++){
         A[i] = 1;
     }
@@ -91,11 +87,11 @@ int main(int argc, char *argv[]) {
         A[ i * N + rank * NormalLines + i ] = 2;
     }
 
-    double* B = (double*)malloc(N * sizeof(double*));
-    double* X = (double*)malloc(N * sizeof(double*));
-    double* result = (double*)malloc( N * sizeof(double*));
-    int* CountELEM = (int*)malloc(size * sizeof(int*));
-    int* shift = (int*)malloc(size * sizeof(int*));
+    double* B = new double[N];
+    double* X = new double[N];
+    double* result = new double[N];
+    int* CountELEM = new int[size];
+    int* shift = new int[size];
     for(int i = 0; i < size; i++){
         shift[i] = i * NormalLines;
     }
@@ -105,7 +101,7 @@ int main(int argc, char *argv[]) {
 
     fill (CountELEM, CountELEM + size, NormalLines);
     CountELEM[size - 1] = N - NormalLines * (size - 1);
-    int k = 0;
+
     do {
         multiplication_vector(A, X, result, N, rank, NumLines, NormalLines, CountELEM, shift);
         subtraction(result, B, N, rank, NumLines, NormalLines);
@@ -113,12 +109,16 @@ int main(int argc, char *argv[]) {
         subtractionNormal(X, result, N);
 
     }while(!check(result, N, B, rank));
-    MPI_Barrier(MPI_COMM_WORLD);
     if (iflast(size, rank)) {
         for (int i = 0; i < N; ++i)
             cout << X[i] << " ";
     }
-
+    delete [] A;
+    delete [] B;
+    delete [] X;
+    delete [] result;
+    delete [] CountELEM;
+    delete [] shift;
     MPI_Finalize();
 
     return 0;
