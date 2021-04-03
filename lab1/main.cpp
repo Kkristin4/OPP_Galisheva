@@ -4,9 +4,7 @@
 using namespace std;
 
 bool iflast(int size, int rank){
-    if (size == rank + 1)
-        return true;
-    return false;
+    return size == rank + 1;
 }
 
 void multiplication_vector(double* matrix, double* vector, double* result, int N, int rank, int NumLines, int NormalLines, int * CountELEM, int * shift){
