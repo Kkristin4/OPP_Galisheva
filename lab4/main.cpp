@@ -10,11 +10,11 @@ struct Area {
     }
 
     double get(int x, int y, int z) {
-        return area[x * Nz * Ny + y * Nz + z];
+        return area[x * (Nz + 2) * (Ny +2) + y * (Nz + 2) + z];
     }
 
     void set(int x, int y, int z, double value) {
-        area[x * Nz * Ny + y * Nz + z] = value;
+        area[x * (Nz +2) * (Ny + 2) + y * (Nz + 2)+ z] = value;
     }
 
     void swap(Area &newarea) {
@@ -65,14 +65,10 @@ int main(int argc, char *argv[]) {
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     std::cout << std::endl;
 
-    const double e = 1e-5;
+    const double e = 1e-14;
     const int phi0 = 0;
 
     const int Nx = 8 / size, Ny = 8, Nz = 8;
-
-    /*  double * area = new double [Nx * Ny * Nz];
-      std::fill(area, area + Nz *Nx* Ny, 0);
-      double *newarea = new double[Nx * Ny * Nz];*/
     Area area(Nx, Ny, Nz);
     Area newarea(Nx, Ny, Nz);
     double max = 0;
@@ -81,13 +77,12 @@ int main(int argc, char *argv[]) {
     MPI_Request h;
     MPI_Request l;
     int cout = (Ny + 2) * (Nz + 2);
-    int u = 0;
     do {
         max = 0;
         if (rank != size - 1) {
             for (int j = 2; j < Ny; j++) {
                 for (int k = 2; k < Nz; k++) {
-                    newarea.set(Nx, j, k, next_phi(area, Nx + 1, j, k, rank, size));
+                    newarea.set(Nx, j, k, next_phi(area, Nx , j, k, rank, size));
                     check_max(max, newarea.get(Nx, j, k), area.get(Nx, j, k));
                 }
             }
@@ -102,14 +97,12 @@ int main(int argc, char *argv[]) {
 
                 }
             }
-
             MPI_Isend(area.link(1), cout, MPI_DOUBLE, rank - 1, 1234, MPI_COMM_WORLD, &low);
-
             MPI_Irecv(newarea.link(0), cout, MPI_DOUBLE, rank - 1, 123, MPI_COMM_WORLD, &h);
 
         }
 
-        for (int i = 1; i < Nx + 1; i++) {
+        for (int i = 2; i < Nx ; i++) {
             for (int j = 1; j < Ny + 1; j++) {
                 for (int k = 1; k < Nz + 1; k++) {
                     newarea.set(i, j, k, next_phi(area, i, j, k, rank, size));
@@ -138,14 +131,11 @@ int main(int argc, char *argv[]) {
 
         }
 
-     /*   MPI_Finalize();
-        return 0;*/
         MPI_Allreduce(&max, &max, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
-        std::cout  << max << std::endl;
+    // if (rank == 0){   std::cout  << max << std::endl;}
         area.swap(newarea);
-        u++;
-    } while (max > e && u < 10);
-    std::cout << "out " << rank << '\n' << std::endl;
+    } while (max > e );
+   // std::cout << "out " << rank << "  "  << max<< '\n' << std::endl;
 
     MPI_Finalize();
 
